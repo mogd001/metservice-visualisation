@@ -1,0 +1,12 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+outputs
+outputs-nz
+processed
+processed-nz
+temp
+ss
+*.lnk
+config.yml

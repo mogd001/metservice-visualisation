@@ -6,7 +6,7 @@ Generates:
 
 1.  animation (.mp4) of forecast rainfall
 
-![](media/example1.gif){width="2451"}
+![](media/example1.gif)
 
 2.  image of forecast accumulated rainfall
 

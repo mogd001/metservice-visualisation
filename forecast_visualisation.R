@@ -362,7 +362,16 @@ generate_plot <- function(r_site, rainfall_summary) {
 
   model_colours <- c("#ff7f00", "#984ea3", "#4daf4a") # standard colours for each model c("ECMWF", "NCEP", "UKMO")
   model_colours[grep(model_of_the_day, models)] <- "red"
-
+  
+  breaks = seq(floor_date(min(r_actual$datetime), "day"), max(r_pred_future$datetime), by = "6 hours")
+  date_labels <- c(sapply(breaks, function(x) {
+    if (hour(x) == 0) {
+      format(x, "%Y%m%d-%H")
+    } else {
+      format(x, "%H")
+    }
+  }))
+  
   plot_site_summary <- ggplot() +
     geom_col(r_actual, mapping = aes(x = datetime - minutes(30), y = rainfall_total_mm), color = "blue", fill = "blue", alpha = 0.4) +
     geom_col(filter(r_pred_future, model_raw == !!model_of_the_day), mapping = aes(x = datetime - minutes(30), y = rainfall_total_mm_hrly), color = "red", fill = "red", alpha = 0.4) +
@@ -371,7 +380,7 @@ generate_plot <- function(r_site, rainfall_summary) {
     geom_line(r_actual, mapping = aes(x = datetime, y = cumsum((rainfall_total_mm)) / 10), size = 0.8, color = "magenta", linetype = "twodash", inherit.aes = FALSE) +
     geom_line(r_pred_past, mapping = aes(x = datetime, y = rainfall_total_mm, color = model), size = 0.8, alpha = 0.4, linetype = "twodash", inherit.aes = FALSE) +
     geom_line(r_pred_future, mapping = aes(x = datetime, y = rainfall_total_mm, color = model), size = 0.8, linetype = "twodash", inherit.aes = FALSE) +
-    scale_x_datetime(breaks = seq(floor_date(min(r_actual$datetime), "day"), max(r_pred_future$datetime), by = "12 hours"), date_labels = "%Y%m%d-%H", minor_breaks = date_breaks("1 hour"), guide = "axis_minor") +
+    scale_x_datetime(breaks = breaks, date_labels = date_labels, minor_breaks = date_breaks("1 hour"), guide = "axis_minor") +
     scale_y_continuous(
       name = "Hourly Rainfall (mm) [bars]",
       limits = c(0, y_limit),

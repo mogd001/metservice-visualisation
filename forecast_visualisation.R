@@ -27,6 +27,8 @@ unlink("outputs/*", recursive = TRUE)
 
 config <- config::get()
 
+dt_frmt <- "%a %d %B %Y %I%p"
+
 # Topo template
 t_prefix <- "http://tiles-a.data-cdn.linz.govt.nz/services;key="
 key <- config$linzkey
@@ -109,8 +111,8 @@ j <- 0
 for (i in 1:max_n_layers) {
   r1 <- crop(s_ecmwf[[i]], e_buffered)
   dt <- names(r1)
-  dt_label <- format(ymd_h(dt, tz = "NZ"), "%A %d %B %Y %I%p")
-  
+  dt_label <- format(ymd_h(dt, tz = "NZ"), dt_frmt)
+
   if (is.na(dt_label)) next # account for day light savings
   if (ymd_h(dt, tz = "NZ") < forecast_start) next # only produce animation for future
 
@@ -158,6 +160,13 @@ for (i in 1:max_n_layers) {
 
       r_24hrs <- stack(rasters_list)
     }
+    if (format(ymd_h(dt, tz = "NZ"), "%Y-%m-%d %H") == format(forecast_start + hours(36), "%Y-%m-%d %H")) {
+      rasters_list <- list(r_ecmwf, r_ncep, r_ukmo)
+      names(rasters_list) <- mnames
+      rasters_stack <- stack(rasters_list)
+
+      r_36hrs <- stack(rasters_list)
+    }
     if (format(ymd_h(dt, tz = "NZ"), "%Y-%m-%d %H") == format(forecast_start + hours(48), "%Y-%m-%d %H")) {
       rasters_list <- list(r_ecmwf, r_ncep, r_ukmo)
       names(rasters_list) <- mnames
@@ -190,16 +199,17 @@ names(rasters_list) <- mnames
 rasters_stack <- stack(rasters_list)
 
 now_to_end_forecast <- difftime(ymd_h(dt, tz = "NZ"), ymd_h(format(forecast_start, "%Y-%m-%d %H"), tz = "NZ"), units = "hours")
+
 r_end <- stack(rasters_list)
 
 rm(s_ecmwf, s_ncep, s_ukmo)
 
 # Create the animation
-tmap_animation(tmaps, width = 4000, height = 1400, fps = 2.0, outer.margins = 0, filename = glue("outputs/1_{format(forecast_start, '%Y%m%d-%H')}_model_forecasts_comparison.mp4"), dpi = 300)
+tmap_animation(tmaps, width = 4000, height = 1400, fps = 2.0, outer.margins = 0, filename = glue("outputs/{format(forecast_start, '%Y%m%d-%H')}_Animation.mp4"), dpi = 300)
 # tmap_animation(tmaps, width = 4000, height = 1400, fps = 2.0, outer.margins = 0, filename = glue("outputs/1_{format(forecast_start, '%Y%m%d-%H')}_model_forecasts_comparison.gif"), dpi = 300)
 
 # Create graph comparing forecasts for different times into the future
-create_forecast_plot <- function(rs, t_label) {
+create_forecast_plot <- function(rs, t_label, breaks) {
   tm_shape(rs) +
     tm_raster(breaks = breaks, palette = colorRampPalette(c("grey", "orange", "magenta"))(length(breaks)), title = glue("Rainfall (mm) {t_label}")) +
     tm_facets(nrow = 1) +
@@ -213,21 +223,43 @@ create_forecast_plot <- function(rs, t_label) {
     )
 }
 
-breaks <- append(c(0, 1, 2, 5), seq(10, 100, 10)) # 10 mm increments after initial bands
+# CUMULATIVE COMPARISON
+max_value <- plyr::round_any(max(maxValue(r_end), maxValue(r_end), maxValue(r_end)), 10, f = ceiling)
+breaks <- append(c(0, 1, 2, 5), seq(10, max_value, 20)) # 10 mm increments after initial bands
 
-dt_frmt <- "%Y-%m-%d %I %p"
 fs_frmt <- format(forecast_start, dt_frmt)
-p_3hrs <- create_forecast_plot(r_3hrs, glue("3 hrs [{fs_frmt} - {format(forecast_start + hours(3), dt_frmt)}]"))
-p_6hrs <- create_forecast_plot(r_6hrs, glue("6 hrs [{fs_frmt} - {format(forecast_start + hours(6), dt_frmt)}]"))
-p_12hrs <- create_forecast_plot(r_12hrs, glue("12 hrs [{fs_frmt} - {format(forecast_start + hours(12), dt_frmt)}]"))
-p_24hrs <- create_forecast_plot(r_24hrs, glue("24 hrs [{fs_frmt} - {format(forecast_start + hours(24), dt_frmt)}]"))
-p_48hrs <- create_forecast_plot(r_48hrs, glue("48 hrs [{fs_frmt} - {format(forecast_start + hours(48), dt_frmt)}]"))
-p_end <- create_forecast_plot(r_end, glue("{as.character(now_to_end_forecast)} hrs [{fs_frmt} - {format(forecast_start + now_to_end_forecast, dt_frmt)}]"))
+p_3hrs <- create_forecast_plot(r_3hrs, glue("3 hrs [{fs_frmt} - {format(forecast_start + hours(3), dt_frmt)}]"), breaks)
+p_6hrs <- create_forecast_plot(r_6hrs, glue("6 hrs [{fs_frmt} - {format(forecast_start + hours(6), dt_frmt)}]"), breaks)
+p_12hrs <- create_forecast_plot(r_12hrs, glue("12 hrs [{fs_frmt} - {format(forecast_start + hours(12), dt_frmt)}]"), breaks)
+p_24hrs <- create_forecast_plot(r_24hrs, glue("24 hrs [{fs_frmt} - {format(forecast_start + hours(24), dt_frmt)}]"), breaks)
+p_36hrs <- create_forecast_plot(r_36hrs, glue("24 hrs [{fs_frmt} - {format(forecast_start + hours(24), dt_frmt)}]"), breaks)
+p_48hrs <- create_forecast_plot(r_48hrs, glue("48 hrs [{fs_frmt} - {format(forecast_start + hours(48), dt_frmt)}]"), breaks)
+p_end <- create_forecast_plot(r_end, glue("{as.character(now_to_end_forecast)} hrs [{fs_frmt} - {format(forecast_start + now_to_end_forecast, dt_frmt)}]"), breaks)
 
 tmap_save(p_24hrs, glue("temp/rainfall_next24hrs.jpeg"), dpi = 90, height = 4, width = 12)
 
 tmap_arrange(p_3hrs, p_6hrs, p_12hrs, p_24hrs, p_48hrs, p_end, nrow = 6) %>%
-  tmap_save(glue("outputs/2_{format(forecast_start, '%Y%m%d-%H')}_model_forecasts_comparison_accumulation.jpeg"), dpi = 600, width = 10000)
+  tmap_save(glue("outputs/{format(forecast_start, '%Y%m%d-%H')}_Cumulative.jpeg"), dpi = 600, width = 10000)
+
+# 12 HOURS
+r_12to24 <- r_24hrs - r_12hrs
+r_24to36 <- r_36hrs - r_24hrs
+r_36to48 <- r_48hrs - r_36hrs
+
+max_value <- plyr::round_any(max(maxValue(r_12hrs), maxValue(r_12to24), maxValue(r_24to36), maxValue(r_36to48)), 10, f = ceiling)
+breaks <- append(c(0, 1, 2, 5), seq(10, max_value, 20)) # 10 mm increments after initial bands
+
+p_0to12hrs <- create_forecast_plot(r_12hrs, glue("[{fs_frmt} - {format(forecast_start + hours(12), dt_frmt)}]"), breaks)
+p_12to24hrs <- create_forecast_plot(r_12to24, glue("[{format(forecast_start + hours(12), dt_frmt)} - {format(forecast_start + hours(24), dt_frmt)}]"), breaks)
+p_24to36hrs <- create_forecast_plot(r_24to36, glue("[{format(forecast_start + hours(24), dt_frmt)} - {format(forecast_start + hours(36), dt_frmt)}]"), breaks)
+p_36to48hrs <- create_forecast_plot(r_36to48, glue("[{format(forecast_start + hours(36), dt_frmt)} - {format(forecast_start + hours(48), dt_frmt)}]"), breaks)
+
+tmap_arrange(p_0to12hrs, p_12to24hrs, p_24to36hrs, p_36to48hrs, nrow = 4) %>%
+  tmap_save(glue("outputs/{format(forecast_start, '%Y%m%d-%H')}_12hour.jpeg"), dpi = 600, width = 10000)
+
+# Clean up
+rm(r_12to24, r_24to36, r_36to48)
+rm(p_3hrs, p_6hrs, p_12hrs, p_24hrs, p_36hrs, p_48hrs, p_end, p_0to12hrs, p_12to24hrs, p_24to36hrs, p_36to48hrs)
 
 generate_plot <- function(r_site, rainfall_summary) {
   print(r_site)
@@ -355,23 +387,24 @@ generate_plot <- function(r_site, rainfall_summary) {
     r_site, observed_rainfall_total, forecast_rainfall_total,  observed_rt_24hrs, forecast_rt_24hrs
   )
 
-  y_limit <- ceiling(round(2 + max(r_actual$rainfall_total_mm, r_pred_future_summary$rainfall_total_mm / 10), 2)) + 10 # TODO auto calculate addon, e.g. the +10
-
+  max_hrly_ylimit <- ceiling(round(2 + max(r_actual$rainfall_total_mm, r_pred_future_summary$rainfall_total_mm / 10), 2))
+  y_limit <- ceiling(max(max_hrly_ylimit * 10, sum(r_actual$rainfall_total_mm) + max(r_pred_future_summary$rainfall_total_mm))/10) + 2
+  
   caption_txt <- paste(r_pred_future_summary$model, r_pred_future_summary$rainfall_total_mm, "mm", paste0("[Computed ", r_pred_future_summary$model_start, "]")) %>%
     knitr::combine_words()
 
   model_colours <- c("#ff7f00", "#984ea3", "#4daf4a") # standard colours for each model c("ECMWF", "NCEP", "UKMO")
   model_colours[grep(model_of_the_day, models)] <- "red"
-  
-  breaks = seq(floor_date(min(r_actual$datetime), "day"), max(r_pred_future$datetime), by = "6 hours")
+
+  breaks <- seq(floor_date(min(r_actual$datetime), "day"), max(r_pred_future$datetime), by = "6 hours")
   date_labels <- c(sapply(breaks, function(x) {
     if (hour(x) == 0) {
-      format(x, "%Y%m%d-%H")
+      format(x, "%a %d %B-%H") 
     } else {
       format(x, "%H")
     }
   }))
-  
+
   plot_site_summary <- ggplot() +
     geom_col(r_actual, mapping = aes(x = datetime - minutes(30), y = rainfall_total_mm), color = "blue", fill = "blue", alpha = 0.4) +
     geom_col(filter(r_pred_future, model_raw == !!model_of_the_day), mapping = aes(x = datetime - minutes(30), y = rainfall_total_mm_hrly), color = "red", fill = "red", alpha = 0.4) +
@@ -386,7 +419,7 @@ generate_plot <- function(r_site, rainfall_summary) {
       limits = c(0, y_limit),
       sec.axis = sec_axis(~ . * 10, name = "Cumulative Rainfall (mm) [lines]"),
       expand = c(0, 0),
-      minor_breaks = 1
+      breaks = seq(0, y_limit, 5)
     ) +
     scale_color_manual(values = model_colours) +
     geom_label(aes(x = median(r_actual$datetime), y = y_limit * 0.95, label = glue("Observed {observed_rainfall_total} mm")), color = "black", fill = "white", size = 5) +
@@ -425,7 +458,7 @@ sites_join <- sites %>%
   st_drop_geometry()
 
 plots <- lapply(p_all, "[[", 1)
-rainfall_summary <- lapply(p_all, "[[", 2)  %>% 
+rainfall_summary <- lapply(p_all, "[[", 2) %>%
   bind_rows()
 
 rescale_vec <- function(x, max_val, new_min, new_max) {
@@ -453,9 +486,9 @@ rainfall_summary <- rainfall_summary %>%
   left_join(sites_join, by = "site") %>%
   dplyr::select(site_name, catchment, observed_rainfall_total, observed_rt_24hrs, forecast_rt_24hrs, forecast_rainfall_total, latitude, longitude) %>%
   mutate(radius_or = rescale_vec(observed_rainfall_total, max_val, 2, max_radius)) %>%
-  relocate(radius_or, .after = longitude) %>% 
+  relocate(radius_or, .after = longitude) %>%
   mutate(radius_fr = rescale_vec(forecast_rainfall_total, max_val, 2, max_radius)) %>%
-  relocate(radius_fr, .after = radius_or) 
+  relocate(radius_fr, .after = radius_or)
 
 rf_ct <- SharedData$new(rainfall_summary, key = ~site_name)
 
@@ -467,7 +500,7 @@ table <- rf_ct %>%
     caption = htmltools::tags$caption(
       style = "caption-side: top; text-align: left; color:black;  font-size:100% ;",
       htmltools::withTags(
-        div(HTML(glue('<a href={table_link} target="_blank">Rainfall Past 24 Hours</a> at {max(rainfall$datetime)} 
+        div(HTML(glue('<a href={table_link} target="_blank">Rainfall Past 24 Hours</a> at {max(rainfall$datetime)}
                       <br>Observed: {format(min(rainfall$datetime), "%A %d %B %Y %I %p")} to {format(max(rainfall$datetime), "%A %d %B %Y %I %p")} [{as.numeric(max(rainfall$datetime) - min(rainfall$datetime), "hours")} hours]
                       <br>Forecast: {format(max(rainfall$datetime), "%A %d %B %Y %I %p")} to {format(max(rainfall_pred$datetime), "%A %d %B %Y %I %p")} [{as.numeric(max(rainfall_pred$datetime) - max(rainfall$datetime), "hours")} hours]')))
       )
@@ -476,7 +509,7 @@ table <- rf_ct %>%
     colnames = c("Site", "Catchment", "Observed RF", "Observed RF Past 24 Hours", "Forecast RF Next 24 Hours", "Forecast RF", "Lat", "Long", "R Observed", "R Forecast"),
     # filter = list(position = "bottom"),
     options = list(
-      order = list(list(2, 'desc')),
+      order = list(list(2, "desc")),
       searching = FALSE,
       pageLength = 15, lengthChange = FALSE, scrollX = TRUE, autoWidth = FALSE,
       columnDefs = list(
@@ -532,7 +565,7 @@ map <- leaflet(height = 900) %>%
     group = "Rivers",
     data = rivers,
     weight = 1
-  ) %>% 
+  ) %>%
   # add observed rainfall
   addCircleMarkers(
     group = "Observed Rainfall",
@@ -541,7 +574,7 @@ map <- leaflet(height = 900) %>%
     color = "blue",
     stroke = TRUE,
     fillOpacity = 0.6,
-    label = ~paste(as.character(site_name), "<br>Observed", observed_rainfall_total , "mm") %>% lapply(htmltools::HTML),
+    label = ~ paste(as.character(site_name), "<br>Observed", observed_rainfall_total, "mm") %>% lapply(htmltools::HTML),
     labelOptions = labelOptions(noHide = FALSE, direction = "auto", style = list(
       "color" = "black",
       "font-family" = "serif",
@@ -556,24 +589,26 @@ map <- leaflet(height = 900) %>%
     color = "red",
     stroke = TRUE,
     fillOpacity = 0.6,
-    label = ~paste(as.character(site_name), "<br>Forecast", forecast_rainfall_total , "mm") %>% lapply(htmltools::HTML),
+    label = ~ paste(as.character(site_name), "<br>Forecast", forecast_rainfall_total, "mm") %>% lapply(htmltools::HTML),
     labelOptions = labelOptions(noHide = FALSE, direction = "auto", style = list(
       "color" = "black",
       "font-family" = "serif",
       "font-size" = "15px"
     ))
-  )%>%
+  ) %>%
   addPopupGraphs(plots, group = "Observed Rainfall", width = 600, height = 500, dpi = 300) %>%
   addPopupGraphs(plots, group = "Forecast Rainfall", width = 600, height = 500, dpi = 300) %>%
-  addRasterImage(r_end[[paste0(model_of_the_day,".MOD")]], group = "Forecast Rainfall Raster", colors = pal1, opacity = 0.8) %>% 
-  addLegend(pal = pal1, values = values(r_end), position = "bottomright", group = "Forecast Rainfall Raster",
-            title = "Forecast Rainfall (MOD)") %>% 
-#Layers control
+  addRasterImage(r_end[[paste0(model_of_the_day, ".MOD")]], group = "Forecast Rainfall Raster", colors = pal1, opacity = 0.8) %>%
+  addLegend(
+    pal = pal1, values = values(r_end), position = "bottomright", group = "Forecast Rainfall Raster",
+    title = "Forecast Rainfall (MOD)"
+  ) %>%
+  # Layers control
   addLayersControl(
     baseGroups = c("Toner Lite", "NZ Topo50", "OSM", "Toner"),
     overlayGroups = c("Catchments", "Rivers", "Observed Rainfall", "Forecast Rainfall", "Forecast Rainfall Raster"),
     options = layersControlOptions(collapsed = TRUE)
-  ) %>% 
+  ) %>%
   hideGroup(c("Forecast Rainfall", "Forecast Rainfall Raster")) %>%
   setView(lng = initial_lng, lat = initial_lat, zoom = initial_zoom)
 
@@ -583,4 +618,4 @@ p <- crosstalk::bscols(
   div(map, style = css(width = "100%", height = "100%"))
 )
 
-htmltools::save_html(p, file = glue("outputs/3_{format(forecast_start, '%Y%m%d-%H')}_summary.html"))
+htmltools::save_html(p, file = glue("outputs/{format(forecast_start, '%Y%m%d-%H')}_Overview.html"))

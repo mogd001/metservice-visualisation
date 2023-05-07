@@ -24,6 +24,7 @@ source("netcdf.R")
 
 # Clear outputs folder
 unlink("outputs/*", recursive = TRUE)
+unlink("outputs_rainfall/*", recursive = TRUE)
 
 config <- config::get()
 
@@ -268,6 +269,7 @@ generate_plot <- function(r_site, rainfall_summary) {
 
   forecast_start <- max(r_actual$datetime)
   observed_rainfall_total <- sum(r_actual$rainfall_total_mm) %>% round(1)
+  observed_rainfall_peak <- max(r_actual$rainfall_total_mm) %>% round(1)
 
   r_pred_ecmwf <- rainfall_pred %>%
     filter(site == !!r_site & model == "ECMWF")
@@ -359,13 +361,15 @@ generate_plot <- function(r_site, rainfall_summary) {
     group_by(model_raw) %>%
     summarise(
       model = unique(model),
-      rainfall_total_mm = max(rainfall_total_mm) * 10
+      rainfall_total_mm = max(rainfall_total_mm) * 10,
+      rainfall_peak_mm = max(rainfall_total_mm_hrly)
     ) %>%
     mutate(rainfall_total_mm = round(rainfall_total_mm - observed_rainfall_total, 1)) %>%
     left_join(model_start, by = c("model_raw" = "model"))
 
   forecast_rainfall_total <- filter(r_pred_future_summary, model_raw == !!model_of_the_day)$rainfall_total_mm
-
+  forecast_rainfall_peak  <- filter(r_pred_future_summary, model_raw == !!model_of_the_day)$rainfall_peak_mm %>% round(1)
+  
   # observed and forecast rainfall (24 hours)
   observed_rt_24hrs <- r_actual %>%
     mutate(datetime = datetime) %>%
@@ -383,8 +387,8 @@ generate_plot <- function(r_site, rainfall_summary) {
 
   # add to summary tibble
   summary <- tribble(
-    ~site, ~observed_rainfall_total, ~forecast_rainfall_total, ~observed_rt_24hrs, ~forecast_rt_24hrs,
-    r_site, observed_rainfall_total, forecast_rainfall_total,  observed_rt_24hrs, forecast_rt_24hrs
+    ~site, ~observed_rainfall_total, ~forecast_rainfall_total, ~observed_rt_24hrs, ~forecast_rt_24hrs, ~observed_rainfall_peak, ~forecast_rainfall_peak,
+    r_site, observed_rainfall_total, forecast_rainfall_total,  observed_rt_24hrs, forecast_rt_24hrs, observed_rainfall_peak, forecast_rainfall_peak
   )
 
   max_hrly_ylimit <- ceiling(round(2 + max(r_actual$rainfall_total_mm, r_pred_future_summary$rainfall_total_mm / 10), 2))
@@ -447,7 +451,20 @@ generate_plot <- function(r_site, rainfall_summary) {
     )
 
   ggsave(glue("outputs/site_plots/{format(forecast_start, '%Y%m%d-%H')}_{r_site}_Rainfall_Forecast.png"), plot = plot_site_summary, dpi = 300, height = 8, width = 12)
-  return(list(plot_site_summary, summary))
+  
+  o <- r_actual %>% 
+    dplyr::select(datetime, rainfall_total_mm, site) %>% 
+    mutate(
+      model = "observed",
+      type = "observed"
+    )
+  
+  f <- r_pred_future %>% dplyr::select(datetime, rainfall_total_mm = rainfall_total_mm_hrly, site, model) %>% 
+      mutate(type = "forecast")
+  
+  r_data <- bind_rows(o, f)
+  
+  return(list(plot_site_summary, summary, r_data))
 }
 
 dir.create("outputs/site_plots")
@@ -459,6 +476,8 @@ sites_join <- sites %>%
 
 plots <- lapply(p_all, "[[", 1)
 rainfall_summary <- lapply(p_all, "[[", 2) %>%
+  bind_rows()
+rainfall_data_export <- lapply(p_all, "[[", 3) %>%
   bind_rows()
 
 rescale_vec <- function(x, max_val, new_min, new_max) {
@@ -484,7 +503,7 @@ max_val <- max(rainfall_summary$observed_rainfall_total, rainfall_summary$foreca
 
 rainfall_summary <- rainfall_summary %>%
   left_join(sites_join, by = "site") %>%
-  dplyr::select(site_name, catchment, observed_rainfall_total, observed_rt_24hrs, forecast_rt_24hrs, forecast_rainfall_total, latitude, longitude) %>%
+  dplyr::select(site_name, catchment, observed_rainfall_total, observed_rt_24hrs, forecast_rt_24hrs, forecast_rainfall_total, latitude, longitude, observed_rainfall_peak, forecast_rainfall_peak) %>%
   mutate(radius_or = rescale_vec(observed_rainfall_total, max_val, 2, max_radius)) %>%
   relocate(radius_or, .after = longitude) %>%
   mutate(radius_fr = rescale_vec(forecast_rainfall_total, max_val, 2, max_radius)) %>%
@@ -513,7 +532,7 @@ table <- rf_ct %>%
       searching = FALSE,
       pageLength = 15, lengthChange = FALSE, scrollX = TRUE, autoWidth = FALSE,
       columnDefs = list(
-        list(targets = c(6, 7, 8, 9), visible = FALSE)
+        list(targets = c(6, 7, 8, 9, 10, 11), visible = FALSE)
       )
     )
   )
@@ -574,7 +593,7 @@ map <- leaflet(height = 900) %>%
     color = "blue",
     stroke = TRUE,
     fillOpacity = 0.6,
-    label = ~ paste(as.character(site_name), "<br>Observed", observed_rainfall_total, "mm") %>% lapply(htmltools::HTML),
+    label = ~ paste(as.character(site_name), "<br>Observed", observed_rainfall_total, " mm <br>Peak", observed_rainfall_peak,  "mm/hr") %>% lapply(htmltools::HTML),
     labelOptions = labelOptions(noHide = FALSE, direction = "auto", style = list(
       "color" = "black",
       "font-family" = "serif",
@@ -589,7 +608,7 @@ map <- leaflet(height = 900) %>%
     color = "red",
     stroke = TRUE,
     fillOpacity = 0.6,
-    label = ~ paste(as.character(site_name), "<br>Forecast", forecast_rainfall_total, "mm") %>% lapply(htmltools::HTML),
+    label = ~ paste(as.character(site_name), "<br>Forecast", forecast_rainfall_total, " mm <br> Peak", forecast_rainfall_peak,  "mm/hr") %>% lapply(htmltools::HTML),
     labelOptions = labelOptions(noHide = FALSE, direction = "auto", style = list(
       "color" = "black",
       "font-family" = "serif",
@@ -619,3 +638,9 @@ p <- crosstalk::bscols(
 )
 
 htmltools::save_html(p, file = glue("outputs/{format(forecast_start, '%Y%m%d-%H')}_Overview.html"))
+
+# Export rainfall timeseries 
+rainfall_data_export %>% 
+  mutate(datetime = format(datetime, "%d/%m/%Y %H:%M:%S")) %>% 
+  write_csv(glue("outputs-rainfall/{format(forecast_start, '%Y%m%d-%H')}_combined_rainfall_data.csv"))
+  

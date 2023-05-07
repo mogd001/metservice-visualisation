@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 outputs
+outputs-rainfall
 outputs-nz
 processed
 processed-nz

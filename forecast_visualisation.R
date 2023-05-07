@@ -642,5 +642,5 @@ htmltools::save_html(p, file = glue("outputs/{format(forecast_start, '%Y%m%d-%H'
 # Export rainfall timeseries 
 rainfall_data_export %>% 
   mutate(datetime = format(datetime, "%d/%m/%Y %H:%M:%S")) %>% 
-  write_csv(glue("outputs-rainfall/{format(forecast_start, '%Y%m%d-%H')}_combined_rainfall_data.csv"))
+  write_csv(glue("outputs/{format(forecast_start, '%Y%m%d-%H')}_combined_rainfall_data.csv"))
   

@@ -75,8 +75,9 @@ site <- get_sharepoint_site(site_name = "Environmental Monitoring")
 site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[1]}"), "R Outputs/12hour.jpeg")
 site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[2]}"), "R Outputs/Animation.gif")
 site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[3]}"), "R Outputs/Animation.mp4")
-site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[4]}"), "R Outputs/Cumulative.jpeg")
-site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[5]}"), "R Outputs/Overview.html")
+site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[4]}"), "R Outputs/Rainfall_Data.csv")
+site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[5]}"), "R Outputs/Cumulative.jpeg")
+site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[6]}"), "R Outputs/Overview.html")
 
 # Delete existing image folders
 tryCatch(

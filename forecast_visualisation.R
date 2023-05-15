@@ -512,7 +512,8 @@ rainfall_summary <- rainfall_summary %>%
 rf_ct <- SharedData$new(rainfall_summary, key = ~site_name)
 
 # Table
-table_link <- "file:///M:/Datafiles/Data%20Tables/RainHour.htm"
+table_link <- "file:///M:/Datafiles/Data%20Tables/RainHour.html"
+# PowerBi report: https://app.powerbi.com/view?r=eyJrIjoiNzM0YTY2YmQtMGQ4ZS00NTY5LWE4ODgtMzJmMzcwMzA1NzJlIiwidCI6IjFhNGMwYzk4LThkMmMtNDc4ZC1iM2QwLThiYjhmZmNkNDU1NCJ9
 
 table <- rf_ct %>%
   datatable(

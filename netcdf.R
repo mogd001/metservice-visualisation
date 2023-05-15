@@ -60,6 +60,8 @@ models <- c("ECMWF", "NCEP", "UKMO")
 start_time <- Sys.time()
 
 for (m in models) {
+  print(m)
+  
   model <- get_most_recent_model(mdl_files, m)
   model_shortname <- gsub(".{3}$", "", str_extract(model, glue(m, "_(.*?).nc")))
 

@@ -31,93 +31,17 @@ unlink(glue("{dst_dir}/*"), recursive = TRUE)
 files <- list.files(src_dir)
 file.copy(paste0(src_dir, "/", files), dst_dir, recursive = TRUE)
 
-# Email team upon completion
-# my_outlook <- get_personal_outlook() # if business outlook is not working
-
 d <- now()
 
-# my_outlook <- get_business_outlook()
-# 
-# em_body <- glue("## MetService forecast visualisation updated
-# 
-# Script completed {d}. Maximum forecast rainfall is at {max_forecast_rainfall_site} with {max_forecast_rainfall} mm forecast over the next {next_hours} hours.
-# 
-# Results available: [{dst_dir}]({dst_dir}).
-# 
-# Explanation of outputs: [documentation]({documentation}).
-# 
-# Next 24 hours:
-# ![Rainfall forecast next 24 hours](temp/rainfall_next24hrs.jpeg)
-# 
-# ")
-# 
-# email <- compose_email(
-#   body = md(em_body),
-#   footer = md("TDC Evironmental Data")
-# )
-
 if (max_forecast_rainfall > 100) {
-  #em <- my_outlook$create_email(email, subject = "MetService Visualisation", to = c("matt.ogden@tasman.govt.nz", "hydroteam@tasman.govt.nz"))
 
   # Archive
   arch_dirname <- format(d, "%Y%m%d-%H")
   dir.create(paste0(arch_dir, "/", arch_dirname))
 
   file.copy(paste0(src_dir, "/", files), paste0(arch_dir, "/", arch_dirname), recursive = TRUE)
-} #else {
-#   em <- my_outlook$create_email(email, subject = "MetService Visualisation", to = c("matt.ogden@tasman.govt.nz"))
-# }
-# 
-# em$send()
-# 
-# # Upload to sharepoint
-# site <- get_sharepoint_site(site_name = "Environmental Monitoring")
-# site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[1]}"), "R Outputs/12hour.jpeg")
-# site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[2]}"), "R Outputs/Animation.gif")
-# site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[3]}"), "R Outputs/Animation.mp4")
-# site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[4]}"), "R Outputs/Rainfall_Data.csv")
-# site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[5]}"), "R Outputs/Cumulative.jpeg")
-# site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{files[6]}"), "R Outputs/Overview.html")
-# 
-# # Delete existing image folders
-# tryCatch(
-#   expr = {
-#     site$get_drive("Reports and Analyses")$delete_item("R Outputs/lib/image-Observed Rainfall-0.0.1")
-#   },
-#   error = function(e) {
-#     print("No image-Observed Rainfall folder to delete.")
-#   }
-# )
-# tryCatch(
-#   expr = {
-#     site$get_drive("Reports and Analyses")$delete_item("R Outputs/lib/image-Forecast Rainfall-0.0.1")
-#   },
-#   error = function(e) {
-#     print("No image-Forecast Rainfall folder to delete.")
-#   }
-# )
-# tryCatch(
-#   expr = {
-#     site$get_drive("Reports and Analyses")$delete_item("R Outputs/site_plots")
-#   },
-#   error = function(e) {
-#     print("No site_plots folder to delete.")
-#   }
-# )
-# 
-# upload_image_sharepoint <- function(x, target_folder) {
-#   site$get_drive("Reports and Analyses")$upload_file(glue("outputs/{target_folder}/{x}"), glue("R Outputs/{target_folder}/{x}"))
-# }
-# 
-# observed_files <- list.files("outputs/lib/image-Observed Rainfall-0.0.1")
-# map(observed_files, upload_image_sharepoint, target_folder = "lib/image-Observed Rainfall-0.0.1")
-# 
-# forecast_files <- list.files("outputs/lib/image-Forecast Rainfall-0.0.1")
-# map(forecast_files, upload_image_sharepoint, target_folder = "lib/image-Forecast Rainfall-0.0.1")
-# 
-# site_plot_files <- list.files("outputs/site_plots")
-# map(site_plot_files, upload_image_sharepoint, target_folder = "site_plots/")
-# 
-# main_end_time <- Sys.time()
-# 
-# print(glue("Finished script {main_end_time}."))
+}
+
+
+main_end_time <- Sys.time()
+print(glue("Finished script {main_end_time}."))

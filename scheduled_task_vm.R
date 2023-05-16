@@ -1,5 +1,14 @@
-library(tidyverse)
+.libPaths(c( "C:/Apps/Hydro/library"))  #.libPaths()
 library(glue)
+print(glue("lib path: {.libPaths()[1]}"))
+
+#library(remotes)
+#Sys.unsetenv("GITHUB_PAT")
+#options(download.file.method = "wininet")
+#devtools::install_github("mogd001/tdcR")
+
+library(tidyverse)
+
 library(Microsoft365R)
 library(blastula)
 library(lubridate)

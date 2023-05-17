@@ -37,7 +37,8 @@ latest_day <- msf_days %>%
   as.numeric() %>%
   max()
 
-latest_day <- sprintf("%02d", latest_day)
+#latest_day <- sprintf("%02d", latest_day)
+latest_day <- formatC(latest_day, width = 2, flag = "0")
 
 rm(msf_months, msf_days)
 target_fp <- file.path(fp, latest_month, latest_day)

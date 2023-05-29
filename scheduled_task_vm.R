@@ -13,6 +13,8 @@ library(Microsoft365R)
 library(blastula)
 library(lubridate)
 library(av)
+library(gifski)
+library(sass)
 
 main_start_time <- Sys.time()
 
@@ -43,7 +45,7 @@ file.copy(paste0(src_dir, "/", files), dst_dir, recursive = TRUE)
 
 d <- now()
 
-if (max_forecast_rainfall > 100) {
+if (max_forecast_rainfall > 200) {
 
   # Archive
   arch_dirname <- format(d, "%Y%m%d-%H")

@@ -33,7 +33,6 @@ file.copy(paste0(src_dir, "/", files), dst_dir, recursive = TRUE)
 
 # Email team upon completion
 # my_outlook <- get_personal_outlook() # if business outlook is not working
-
 d <- now()
 
 my_outlook <- get_business_outlook()

@@ -19,12 +19,17 @@ library(leafpop)
 
 library(config)
 
-source("functions.R")
 source("netcdf.R")
 
 # Clear outputs folder
 unlink("outputs/*", recursive = TRUE)
 unlink("outputs_rainfall/*", recursive = TRUE)
+
+# Clear memory
+rm(list = ls())
+gc()
+
+source("functions.R")
 
 config <- config::get()
 
@@ -206,9 +211,16 @@ r_end <- stack(rasters_list)
 rm(s_ecmwf, s_ncep, s_ukmo)
 
 # Create the animation
-tmap_animation(tmaps, width = 4000, height = 1400, fps = 4.0, outer.margins = 0, filename = glue("outputs/{format(forecast_start, '%Y%m%d-%H')}_Animation.mp4"), dpi = 300)
-tmap_animation(tmaps, width = 4000, height = 1400, fps = 2.0, outer.margins = 0, filename = glue("outputs/{format(forecast_start, '%Y%m%d-%H')}_Animation.gif"), dpi = 300)
-
+tryCatch(
+  {
+    tmap_animation(tmaps, width = 4000, height = 1400, fps = 4.0, outer.margins = 0, filename = glue("outputs/{format(forecast_start, '%Y%m%d-%H')}_Animation.mp4"), dpi = 300)
+    tmap_animation(tmaps, width = 4000, height = 1400, fps = 2.0, outer.margins = 0, filename = glue("outputs/{format(forecast_start, '%Y%m%d-%H')}_Animation.gif"), dpi = 300)
+  },
+  error = function(e) {
+    print(paste("FFMPEG error:", e$message))
+  }
+)
+  
 # Create graph comparing forecasts for different times into the future
 create_forecast_plot <- function(rs, t_label, breaks) {
   tm_shape(rs) +

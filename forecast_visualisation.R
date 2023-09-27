@@ -19,7 +19,7 @@ library(leafpop)
 
 library(config)
 
-source("netcdf.R")
+source("netcdf_processing.R")
 
 # Clear outputs folder
 unlink("outputs/*", recursive = TRUE)
@@ -28,8 +28,6 @@ unlink("outputs_rainfall/*", recursive = TRUE)
 # Clear memory
 rm(list = ls())
 gc()
-
-source("functions.R")
 
 config <- config::get()
 
@@ -79,20 +77,25 @@ rainfall_sites <- unique(rainfall$site)
 sites <- sites %>% filter(site %in% rainfall_sites)
 
 models <- c("ECMWF", "NCEP", "UKMO")
-model_of_the_day <- readRDS(glue("processed/model_of_the_day.rds"))
+m_ress <- c("4k", "8k")
+
+model_of_the_day <- readRDS(glue("processed/mod.rds"))
 
 rainfall_pred <- tibble()
 
 for (model in models) {
-  p <- readRDS(glue("processed/{model}_point_forecast.rds"))
-  rainfall_pred_temp <- calculate_site_forecasts(p, sites) %>%
-    mutate(model = model)
-  rainfall_pred <- bind_rows(rainfall_pred, rainfall_pred_temp)
+  for (m_res in m_ress) {
+    p <- readRDS(glue("processed/{model}_{m_res}_point_forecast.rds"))
+    rainfall_pred_temp <- calculate_site_forecasts(p, sites) %>%
+      mutate(model = model,
+             m_res = m_res)
+    rainfall_pred <- bind_rows(rainfall_pred, rainfall_pred_temp)
+  }
 }
 
-s_ecmwf <- readRDS(glue("processed/ECMWF_stack.rds"))
-s_ncep <- readRDS(glue("processed/NCEP_stack.rds"))
-s_ukmo <- readRDS(glue("processed/UKMO_stack.rds"))
+s_ecmwf <- readRDS(glue("processed/ECMWF_8k_stack.rds"))
+s_ncep <- readRDS(glue("processed/NCEP_8k_stack.rds"))
+s_ukmo <- readRDS(glue("processed/UKMO_8k_stack.rds"))
 
 catchments_wgs <- st_transform(catchments, crs(s_ecmwf))
 sites_wgs <- st_transform(sites, crs(s_ecmwf))

@@ -20,6 +20,7 @@ library(leafpop)
 library(config)
 
 source("netcdf_processing.R")
+source("functions.R")
 
 # Clear outputs folder
 unlink("outputs/*", recursive = TRUE)
@@ -83,6 +84,7 @@ model_of_the_day <- readRDS(glue("processed/mod.rds"))
 
 rainfall_pred <- tibble()
 
+# Construct predictions for each model at each site location
 for (model in models) {
   for (m_res in m_ress) {
     p <- readRDS(glue("processed/{model}_{m_res}_point_forecast.rds"))

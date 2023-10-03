@@ -61,7 +61,7 @@ m_ress <- c("4k", "8k")
 
 combinations <- expand.grid(models, m_ress) # Combinations of model and model resolution
 
-# Process the metservice files
+# Process the MetService files
 apply(combinations, 1, function(row) { 
   process_metservice_nc_data(row[1], row[2])
 })

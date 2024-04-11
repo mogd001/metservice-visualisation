@@ -1,6 +1,6 @@
 # MetService Visualisation
 
-A set of visualisation's which show recent observed and forecast rainfall data, both at a regional level and at a site-specific level.
+A set of visualisation's which show recent observed and forecast rainfall, both at a regional level and at a site-specific level.
 
 Generates:
 
